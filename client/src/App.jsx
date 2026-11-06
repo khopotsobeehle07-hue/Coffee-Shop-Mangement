@@ -5,24 +5,38 @@ import Hero from "./components/Hero";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import StaffDashboard from "./components/StaffDashboard";
-import { getMenu, placeOrder } from "./services/api";
+import { getMenu, placeOrder, staffAPI } from "./services/api";
 import "./App.css";
 
 function App() {
     const [products, setProducts] = useState([]);
     const [cart, setCart] = useState([]);
     const [category, setCategory] = useState("All");
+
     const [cartOpen, setCartOpen] = useState(false);
     const [checkoutOpen, setCheckoutOpen] = useState(false);
+
     const [customerName, setCustomerName] = useState("");
     const [loading, setLoading] = useState(true);
+
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+
     const [staffMode, setStaffMode] = useState(false);
-    const refreshMenu = async () => {
-    const updatedMenu = await getMenu();
-    setProducts(updatedMenu);
-};
+    const [staffKey, setStaffKey] = useState("");
+    const [staffAuthenticated, setStaffAuthenticated] = useState(false);
+    const [staffError, setStaffError] = useState("");
+    const [staffLoading, setStaffLoading] = useState(false);
+
+    const cartCount = cart.reduce(
+        (sum, item) => sum + item.quantity,
+        0
+    );
+
+    async function refreshMenu() {
+        const updatedMenu = await getMenu();
+        setProducts(updatedMenu);
+    }
 
     useEffect(() => {
         getMenu()
@@ -31,40 +45,60 @@ function App() {
             .finally(() => setLoading(false));
     }, []);
 
-    const addToCart = (product) => {
+    function addToCart(product) {
+        if (!product.available) return;
+
         setCart(current => {
-            const existing = current.find(item => item.id === product.id);
+            const existing = current.find(
+                item => item.id === product.id
+            );
 
             if (existing) {
                 return current.map(item =>
                     item.id === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
+                        ? {
+                            ...item,
+                            quantity: item.quantity + 1
+                        }
                         : item
                 );
             }
 
-            return [...current, { ...product, quantity: 1 }];
+            return [
+                ...current,
+                {
+                    ...product,
+                    quantity: 1
+                }
+            ];
         });
-    };
+    }
 
-    const changeQuantity = (id, amount) => {
+    function changeQuantity(id, amount) {
         setCart(current =>
             current
-                .map(item => item.id === id
-                    ? { ...item, quantity: item.quantity + amount }
-                    : item
+                .map(item =>
+                    item.id === id
+                        ? {
+                            ...item,
+                            quantity: item.quantity + amount
+                        }
+                        : item
                 )
                 .filter(item => item.quantity > 0)
         );
-    };
+    }
 
-    const removeItem = (id) => {
-        setCart(current => current.filter(item => item.id !== id));
-    };
+    function removeItem(id) {
+        setCart(current =>
+            current.filter(item => item.id !== id)
+        );
+    }
 
-    const submitOrder = async (event) => {
+    async function submitOrder(event) {
         event.preventDefault();
         setError("");
+        setSuccess("");
 
         try {
             const result = await placeOrder({
@@ -86,49 +120,182 @@ function App() {
         } catch (err) {
             setError(err.message);
         }
-    };
+    }
+
+    async function loginStaff(event) {
+        event.preventDefault();
+
+        setStaffError("");
+        setStaffLoading(true);
+
+        try {
+            sessionStorage.setItem("staffKey", staffKey);
+
+            // Verify the key by requesting a protected endpoint.
+            await staffAPI.getOrders();
+
+            setStaffAuthenticated(true);
+        } catch (err) {
+            sessionStorage.removeItem("staffKey");
+            setStaffAuthenticated(false);
+            setStaffError(
+                err.message || "Invalid staff access key."
+            );
+        } finally {
+            setStaffLoading(false);
+        }
+    }
+
+    function logoutStaff() {
+        sessionStorage.removeItem("staffKey");
+        setStaffKey("");
+        setStaffAuthenticated(false);
+        setStaffError("");
+        setStaffMode(false);
+    }
+
+    function toggleStaffMode() {
+        setStaffMode(current => !current);
+        setStaffError("");
+    }
 
     return (
         <>
             <Navbar
-                cartCount={cart.reduce(
-                    (sum, item) => sum + item.quantity, 0
-                )}
+                cartCount={cartCount}
                 onCartClick={() => setCartOpen(true)}
             />
 
-            <Hero />
+            <div className="app-toolbar">
+                <button
+                    type="button"
+                    className="staff-toggle"
+                    onClick={toggleStaffMode}
+                >
+                    {staffMode
+                        ? "Return to Customer View"
+                        : "Staff Dashboard"}
+                </button>
+            </div>
 
-            <main>
-                <section className="menu-section" id="menu">
-                    {error && <p className="error-message">{error}</p>}
-                    {success && <p className="success-message">{success}</p>}
+            {staffMode ? (
+                staffAuthenticated ? (
+                    <>
+                        <div className="staff-topbar">
+                            <span>Staff access active</span>
 
-                    {loading ? (
-                        <p className="empty-message">Loading menu...</p>
-                    ) : (
-                        <Menu
+                            <button
+                                type="button"
+                                onClick={logoutStaff}
+                            >
+                                Sign Out
+                            </button>
+                        </div>
+
+                        <StaffDashboard
                             products={products}
-                            activeCategory={category}
-                            setActiveCategory={setCategory}
-                            onAdd={addToCart}
+                            refreshMenu={refreshMenu}
                         />
-                    )}
-                </section>
+                    </>
+                ) : (
+                    <main className="staff-login-page">
+                        <form
+                            className="staff-login-form"
+                            onSubmit={loginStaff}
+                        >
+                            <span className="eyebrow">
+                                BREWHAUS MANAGEMENT
+                            </span>
 
-                <section className="about-section" id="about">
-                    <h2>More than just coffee.</h2>
-                    <p>
-                        We believe every cup tells a story.
-                        Fresh ingredients, quality brewing
-                        and good moments.
-                    </p>
-                </section>
-            </main>
+                            <h1>Staff Access</h1>
 
-            <footer>
-                © 2026 BREWHAUS. Crafted with passion.
-            </footer>
+                            <p>
+                                Enter your staff access key to
+                                open the management dashboard.
+                            </p>
+
+                            <label htmlFor="staffKey">
+                                Staff access key
+                            </label>
+
+                            <input
+                                id="staffKey"
+                                type="password"
+                                value={staffKey}
+                                onChange={event =>
+                                    setStaffKey(event.target.value)
+                                }
+                                placeholder="Enter staff key"
+                                required
+                            />
+
+                            {staffError && (
+                                <p className="error-message">
+                                    {staffError}
+                                </p>
+                            )}
+
+                            <button
+                                className="checkout-button"
+                                type="submit"
+                                disabled={staffLoading}
+                            >
+                                {staffLoading
+                                    ? "Verifying..."
+                                    : "Access Dashboard"}
+                            </button>
+                        </form>
+                    </main>
+                )
+            ) : (
+                <>
+                    <Hero />
+
+                    <main>
+                        {error && (
+                            <p className="error-message app-message">
+                                {error}
+                            </p>
+                        )}
+
+                        {success && (
+                            <p className="success-message app-message">
+                                {success}
+                            </p>
+                        )}
+
+                        {loading ? (
+                            <p className="empty-message">
+                                Loading menu...
+                            </p>
+                        ) : (
+                            <Menu
+                                products={products}
+                                activeCategory={category}
+                                setActiveCategory={setCategory}
+                                onAdd={addToCart}
+                            />
+                        )}
+
+                        <section
+                            className="about-section"
+                            id="about"
+                        >
+                            <h2>More than just coffee.</h2>
+
+                            <p>
+                                We believe every cup tells a story.
+                                Fresh ingredients, quality brewing
+                                and good moments.
+                            </p>
+                        </section>
+                    </main>
+
+                    <footer>
+                        © 2026 BREWHAUS. Crafted with passion.
+                    </footer>
+                </>
+            )}
 
             <Cart
                 open={cartOpen}
@@ -144,7 +311,10 @@ function App() {
 
             {checkoutOpen && (
                 <div className="checkout-overlay">
-                    <form className="checkout-form" onSubmit={submitOrder}>
+                    <form
+                        className="checkout-form"
+                        onSubmit={submitOrder}
+                    >
                         <h2>Complete Your Order</h2>
 
                         <label htmlFor="customerName">
@@ -154,14 +324,23 @@ function App() {
                         <input
                             id="customerName"
                             value={customerName}
-                            onChange={e => setCustomerName(e.target.value)}
+                            onChange={event =>
+                                setCustomerName(event.target.value)
+                            }
                             placeholder="Enter your name"
                             required
                         />
 
-                        {error && <p className="error-message">{error}</p>}
+                        {error && (
+                            <p className="error-message">
+                                {error}
+                            </p>
+                        )}
 
-                        <button className="checkout-button" type="submit">
+                        <button
+                            className="checkout-button"
+                            type="submit"
+                        >
                             Place Order
                         </button>
 
