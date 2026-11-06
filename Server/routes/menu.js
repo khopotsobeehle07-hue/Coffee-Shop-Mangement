@@ -1,104 +1,167 @@
 
 const express = require("express");
 const { randomUUID } = require("crypto");
-const db = require("../Config/database");
+const staffAuth = require("../middleware/auth");
+const database = require("../config/database");
 
 const router = express.Router();
 
-const MENU_PREFIX = "menu:";
-
-// GET all menu items
+// Public: get all menu products
 router.get("/", async (req, res) => {
     try {
-        const items = await db.getAll(MENU_PREFIX);
-        res.json(items);
+        const products = await database.getAll("menu:");
+        res.json(products);
     } catch (error) {
-        res.status(500).json({ message: "Failed to retrieve menu" });
+        res.status(500).json({
+            message: "Unable to retrieve menu",
+            error: error.message
+        });
     }
 });
 
-// GET one menu item
+// Public: get one product
 router.get("/:id", async (req, res) => {
-    const item = await db.get(`${MENU_PREFIX}${req.params.id}`);
+    try {
+        const product = await database.get(`menu:${req.params.id}`);
 
-    if (!item) {
-        return res.status(404).json({ message: "Menu item not found" });
+        if (!product) {
+            return res.status(404).json({
+                message: "Product not found"
+            });
+        }
+
+        res.json(product);
+    } catch (error) {
+        res.status(500).json({
+            message: "Unable to retrieve product",
+            error: error.message
+        });
     }
-
-    res.json(item);
 });
 
-// ADD menu item
-router.post("/", async (req, res) => {
-    const { name, description, price, category, available } = req.body;
+// Staff: add product
+router.post("/", staffAuth, async (req, res) => {
+    try {
+        const {
+            name,
+            description,
+            price,
+            category,
+            available,
+            image
+        } = req.body;
 
-    if (!name || !description || !category ||
-        typeof price !== "number" || price < 0) {
-        return res.status(400).json({ message: "Invalid menu item data" });
+        if (!name || !description || !category ||
+            price === undefined || Number(price) < 0 ||
+            !Number.isFinite(Number(price))) {
+            return res.status(400).json({
+                message: "Please provide a valid name, description, category and price"
+            });
+        }
+
+        const id = randomUUID();
+
+        const product = {
+            id,
+            name: name.trim(),
+            description: description.trim(),
+            price: Number(price),
+            category,
+            available: available !== false,
+            image: image || "",
+            createdAt: new Date().toISOString()
+        };
+
+        await database.set(`menu:${id}`, product);
+
+        res.status(201).json({
+            message: "Product added successfully",
+            product
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Unable to add product",
+            error: error.message
+        });
     }
-
-    const id = randomUUID();
-
-    const item = {
-        id,
-        name,
-        description,
-        price,
-        category,
-        available: available ?? true,
-        createdAt: new Date().toISOString()
-    };
-
-    await db.set(`${MENU_PREFIX}${id}`, item);
-
-    res.status(201).json({
-        message: "Menu item created",
-        item
-    });
 });
 
-// UPDATE menu item
-router.put("/:id", async (req, res) => {
-    const key = `${MENU_PREFIX}${req.params.id}`;
-    const existing = await db.get(key);
+// Staff: update product
+router.put("/:id", staffAuth, async (req, res) => {
+    try {
+        const key = `menu:${req.params.id}`;
+        const existingProduct = await database.get(key);
 
-    if (!existing) {
-        return res.status(404).json({ message: "Menu item not found" });
+        if (!existingProduct) {
+            return res.status(404).json({
+                message: "Product not found"
+            });
+        }
+
+        const {
+            name,
+            description,
+            price,
+            category,
+            available,
+            image
+        } = req.body;
+
+        if (!name || !description || !category ||
+            price === undefined || !Number.isFinite(Number(price)) ||
+            Number(price) < 0) {
+            return res.status(400).json({
+                message: "Please provide valid product details"
+            });
+        }
+
+        const updatedProduct = {
+            ...existingProduct,
+            name: name.trim(),
+            description: description.trim(),
+            price: Number(price),
+            category,
+            available: available !== false,
+            image: image || ""
+        };
+
+        await database.set(key, updatedProduct);
+
+        res.json({
+            message: "Product updated successfully",
+            product: updatedProduct
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Unable to update product",
+            error: error.message
+        });
     }
-
-    const { name, description, price, category, available } = req.body;
-
-    if (price !== undefined &&
-        (typeof price !== "number" || price < 0)) {
-        return res.status(400).json({ message: "Invalid price" });
-    }
-
-    const updated = {
-        ...existing,
-        ...(name !== undefined && { name }),
-        ...(description !== undefined && { description }),
-        ...(price !== undefined && { price }),
-        ...(category !== undefined && { category }),
-        ...(available !== undefined && { available })
-    };
-
-    await db.set(key, updated);
-
-    res.json({ message: "Menu item updated", item: updated });
 });
 
-// DELETE menu item
-router.delete("/:id", async (req, res) => {
-    const key = `${MENU_PREFIX}${req.params.id}`;
-    const existing = await db.get(key);
+// Staff: delete product
+router.delete("/:id", staffAuth, async (req, res) => {
+    try {
+        const key = `menu:${req.params.id}`;
+        const product = await database.get(key);
 
-    if (!existing) {
-        return res.status(404).json({ message: "Menu item not found" });
+        if (!product) {
+            return res.status(404).json({
+                message: "Product not found"
+            });
+        }
+
+        await database.remove(key);
+
+        res.json({
+            message: "Product deleted successfully"
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Unable to delete product",
+            error: error.message
+        });
     }
-
-    await db.remove(key);
-
-    res.json({ message: "Menu item deleted" });
 });
 
 module.exports = router;

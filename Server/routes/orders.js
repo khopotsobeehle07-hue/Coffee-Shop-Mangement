@@ -1,73 +1,95 @@
 
 const express = require("express");
 const { randomUUID } = require("crypto");
-const db = require("../Config/database");
+const staffAuth = require("../middleware/auth");
+const database = require("../config/database");
 
 const router = express.Router();
 
-const ORDER_PREFIX = "order:";
-const MENU_PREFIX = "menu:";
+const validStatuses = [
+    "Pending",
+    "Preparing",
+    "Ready",
+    "Collected"
+];
 
-const STATUSES = ["Pending", "Preparing", "Ready", "Collected"];
+// Staff: get all orders
+router.get("/", staffAuth, async (req, res) => {
+    try {
+        const orders = await database.getAll("orders:");
 
-// GET all orders
-router.get("/", async (req, res) => {
-    const orders = await db.getAll(ORDER_PREFIX);
-    res.json(orders);
-});
+        orders.sort((a, b) =>
+            new Date(b.createdAt) - new Date(a.createdAt)
+        );
 
-// GET one order
-router.get("/:id", async (req, res) => {
-    const order = await db.get(`${ORDER_PREFIX}${req.params.id}`);
-
-    if (!order) {
-        return res.status(404).json({ message: "Order not found" });
+        res.json(orders);
+    } catch (error) {
+        res.status(500).json({
+            message: "Unable to retrieve orders",
+            error: error.message
+        });
     }
-
-    res.json(order);
 });
 
-// PLACE order
+// Staff: get one order
+router.get("/:id", staffAuth, async (req, res) => {
+    try {
+        const order = await database.get(`orders:${req.params.id}`);
+
+        if (!order) {
+            return res.status(404).json({
+                message: "Order not found"
+            });
+        }
+
+        res.json(order);
+    } catch (error) {
+        res.status(500).json({
+            message: "Unable to retrieve order",
+            error: error.message
+        });
+    }
+});
+
+// Public: place an order
 router.post("/", async (req, res) => {
     try {
         const { customerName, items } = req.body;
 
-        if (!customerName?.trim() ||
-            !Array.isArray(items) || items.length === 0) {
+        if (!customerName || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({
-                message: "Customer name and order items are required"
+                message: "Customer name and at least one order item are required"
             });
         }
 
         const orderItems = [];
         let total = 0;
 
-        for (const requested of items) {
-            if (!Number.isInteger(requested.quantity) ||
-                requested.quantity < 1) {
+        for (const item of items) {
+            const quantity = Number(item.quantity);
+
+            if (!item.productId || !Number.isInteger(quantity) || quantity < 1) {
                 return res.status(400).json({
-                    message: "Invalid item quantity"
+                    message: "Each order item must have a valid product and quantity"
                 });
             }
 
-            const product = await db.get(
-                `${MENU_PREFIX}${requested.productId}`
-            );
+            const product = await database.get(`menu:${item.productId}`);
 
             if (!product || !product.available) {
                 return res.status(400).json({
-                    message: "An item is unavailable"
+                    message: `Product is unavailable: ${item.productId}`
                 });
             }
 
-            const subtotal = product.price * requested.quantity;
+            const subtotal = product.price * quantity;
             total += subtotal;
 
             orderItems.push({
                 productId: product.id,
                 name: product.name,
                 price: product.price,
-                quantity: requested.quantity,
+                quantity,
                 subtotal
             });
         }
@@ -78,46 +100,59 @@ router.post("/", async (req, res) => {
             id,
             customerName: customerName.trim(),
             items: orderItems,
-            total,
+            total: Number(total.toFixed(2)),
             status: "Pending",
             createdAt: new Date().toISOString()
         };
 
-        await db.set(`${ORDER_PREFIX}${id}`, order);
+        await database.set(`orders:${id}`, order);
 
         res.status(201).json({
             message: "Order placed successfully",
             order
         });
-
     } catch (error) {
-        res.status(500).json({ message: "Could not place order" });
+        res.status(500).json({
+            message: "Unable to place order",
+            error: error.message
+        });
     }
 });
 
-// UPDATE order status
-router.patch("/:id/status", async (req, res) => {
-    const { status } = req.body;
-    const key = `${ORDER_PREFIX}${req.params.id}`;
+// Staff: update order status
+router.patch("/:id/status", staffAuth, async (req, res) => {
+    try {
+        const { status } = req.body;
+        const key = `orders:${req.params.id}`;
+        const order = await database.get(key);
 
-    if (!STATUSES.includes(status)) {
-        return res.status(400).json({ message: "Invalid order status" });
+        if (!order) {
+            return res.status(404).json({
+                message: "Order not found"
+            });
+        }
+
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({
+                message: "Invalid order status"
+            });
+        }
+
+        order.status = status;
+        order.updatedAt = new Date().toISOString();
+
+        await database.set(key, order);
+
+        res.json({
+            message: "Order status updated successfully",
+            order
+        });
+    } catch (error) {
+        res.status(500).json({
+            message: "Unable to update order status",
+            error: error.message
+        });
     }
-
-    const order = await db.get(key);
-
-    if (!order) {
-        return res.status(404).json({ message: "Order not found" });
-    }
-
-    order.status = status;
-
-    await db.set(key, order);
-
-    res.json({
-        message: "Order status updated",
-        order
-    });
 });
 
 module.exports = router;

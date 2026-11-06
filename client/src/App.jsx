@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
+import StaffDashboard from "./components/StaffDashboard";
 import { getMenu, placeOrder } from "./services/api";
 import "./App.css";
 
@@ -17,6 +18,11 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [staffMode, setStaffMode] = useState(false);
+    const refreshMenu = async () => {
+    const updatedMenu = await getMenu();
+    setProducts(updatedMenu);
+};
 
     useEffect(() => {
         getMenu()
