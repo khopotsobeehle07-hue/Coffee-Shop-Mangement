@@ -264,6 +264,9 @@ export default function StaffDashboard({ products, refreshMenu }) {
                         <option value="Coffee">Coffee</option>
                         <option value="Tea">Tea</option>
                         <option value="Pastries">Pastries</option>
+                        <option value="Desserts">Desserts</option>
+                        <option value="Foods">Foods</option>
+                        <option value="Drinks">Drinks</option>
                     </select>
 
                     <input

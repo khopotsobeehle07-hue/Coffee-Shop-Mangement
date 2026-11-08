@@ -1,17 +1,39 @@
 
-require("dotenv").config();
+const jwt = require("jsonwebtoken");
 
 function staffAuth(req, res, next) {
-    const apiKey = req.headers["x-staff-key"];
+    const authorization = req.headers.authorization || "";
+    const [scheme, token] = authorization.split(" ");
 
-    if (!process.env.STAFF_API_KEY ||
-        apiKey !== process.env.STAFF_API_KEY) {
+    if (scheme !== "Bearer" || !token) {
         return res.status(401).json({
-            message: "Staff authentication required"
+            message: "Staff authentication required."
         });
     }
 
-    next();
+    if (!process.env.JWT_SECRET) {
+        return res.status(500).json({
+            message: "Authentication is not configured."
+        });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        if (decoded.role !== "staff") {
+            return res.status(403).json({
+                message: "Staff access only."
+            });
+        }
+
+        req.staff = decoded;
+
+        next();
+    } catch (error) {
+        return res.status(401).json({
+            message: "Invalid or expired staff session."
+        });
+    }
 }
 
 module.exports = staffAuth;

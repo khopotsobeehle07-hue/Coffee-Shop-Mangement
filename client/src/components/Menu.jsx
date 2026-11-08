@@ -1,7 +1,7 @@
 
 import ProductCard from "./ProductCard";
 
-const categories = ["All", "Coffee", "Tea", "Pastries"];
+const categories = ["All", "Coffee", "Tea", "Pastries", "Desserts", "Foods", "Drinks"];
 
 export default function Menu({
     products,
@@ -21,7 +21,7 @@ export default function Menu({
             <div className="section-heading">
                 <span className="eyebrow">MADE FRESH DAILY</span>
                 <h2>Explore Our Menu</h2>
-                <p>Find your next favourite cup.</p>
+                <p>Find your next favourite cup, dessert or meal.</p>
             </div>
 
             <div className="categories">

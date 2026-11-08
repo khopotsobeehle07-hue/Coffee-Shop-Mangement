@@ -2,7 +2,7 @@
 const express = require("express");
 const { randomUUID } = require("crypto");
 const staffAuth = require("../middleware/auth");
-const database = require("../config/database");
+const database = require("../Config/database");
 
 const router = express.Router();
 

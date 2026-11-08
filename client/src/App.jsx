@@ -5,7 +5,12 @@ import Hero from "./components/Hero";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import StaffDashboard from "./components/StaffDashboard";
-import { getMenu, placeOrder, staffAPI } from "./services/api";
+import {
+    getMenu,
+    placeOrder,
+    loginStaff,
+    staffAPI
+} from "./services/api";
 import "./App.css";
 
 function App() {
@@ -23,8 +28,9 @@ function App() {
     const [success, setSuccess] = useState("");
 
     const [staffMode, setStaffMode] = useState(false);
-    const [staffKey, setStaffKey] = useState("");
     const [staffAuthenticated, setStaffAuthenticated] = useState(false);
+    const [staffUsername, setStaffUsername] = useState("");
+    const [staffPassword, setStaffPassword] = useState("");
     const [staffError, setStaffError] = useState("");
     const [staffLoading, setStaffLoading] = useState(false);
 
@@ -122,36 +128,40 @@ function App() {
         }
     }
 
-    async function loginStaff(event) {
+    async function handleStaffLogin(event) {
         event.preventDefault();
 
         setStaffError("");
         setStaffLoading(true);
 
         try {
-            sessionStorage.setItem("staffKey", staffKey);
+            const result = await loginStaff({
+                username: staffUsername,
+                password: staffPassword
+            });
 
-            // Verify the key by requesting a protected endpoint.
+            sessionStorage.setItem("staffToken", result.token);
+
             await staffAPI.getOrders();
 
             setStaffAuthenticated(true);
+            setStaffPassword("");
         } catch (err) {
-            sessionStorage.removeItem("staffKey");
+            sessionStorage.removeItem("staffToken");
             setStaffAuthenticated(false);
-            setStaffError(
-                err.message || "Invalid staff access key."
-            );
+            setStaffError(err.message);
         } finally {
             setStaffLoading(false);
         }
     }
 
     function logoutStaff() {
-        sessionStorage.removeItem("staffKey");
-        setStaffKey("");
+        sessionStorage.removeItem("staffToken");
         setStaffAuthenticated(false);
-        setStaffError("");
+        setStaffUsername("");
+        setStaffPassword("");
         setStaffMode(false);
+        setStaffError("");
     }
 
     function toggleStaffMode() {
@@ -201,31 +211,47 @@ function App() {
                     <main className="staff-login-page">
                         <form
                             className="staff-login-form"
-                            onSubmit={loginStaff}
+                            onSubmit={handleStaffLogin}
                         >
                             <span className="eyebrow">
                                 BREWHAUS MANAGEMENT
                             </span>
 
-                            <h1>Staff Access</h1>
+                            <h1>Staff Login</h1>
 
                             <p>
-                                Enter your staff access key to
-                                open the management dashboard.
+                                Sign in to manage products and
+                                customer orders.
                             </p>
 
-                            <label htmlFor="staffKey">
-                                Staff access key
+                            <label htmlFor="staffUsername">
+                                Username
                             </label>
 
                             <input
-                                id="staffKey"
-                                type="password"
-                                value={staffKey}
+                                id="staffUsername"
+                                value={staffUsername}
                                 onChange={event =>
-                                    setStaffKey(event.target.value)
+                                    setStaffUsername(event.target.value)
                                 }
-                                placeholder="Enter staff key"
+                                placeholder="Enter username"
+                                autoComplete="username"
+                                required
+                            />
+
+                            <label htmlFor="staffPassword">
+                                Password
+                            </label>
+
+                            <input
+                                id="staffPassword"
+                                type="password"
+                                value={staffPassword}
+                                onChange={event =>
+                                    setStaffPassword(event.target.value)
+                                }
+                                placeholder="Enter password"
+                                autoComplete="current-password"
                                 required
                             />
 
@@ -241,8 +267,8 @@ function App() {
                                 disabled={staffLoading}
                             >
                                 {staffLoading
-                                    ? "Verifying..."
-                                    : "Access Dashboard"}
+                                    ? "Signing in..."
+                                    : "Sign In"}
                             </button>
                         </form>
                     </main>

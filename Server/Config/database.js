@@ -2,65 +2,122 @@
 const { createClient } = require("redis");
 
 let client;
-const memoryStore = new Map();
+let connectionAttempt;
+
+function waitForReady(redis) {
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            cleanup();
+            reject(new Error("Timed out waiting for Redis to reconnect."));
+        }, 10000);
+
+        function cleanup() {
+            clearTimeout(timeout);
+            redis.off("ready", onReady);
+        }
+
+        function onReady() {
+            cleanup();
+            resolve();
+        }
+
+        redis.once("ready", onReady);
+    });
+}
 
 async function connectDatabase() {
     if (!process.env.REDIS_URL) {
-        console.warn("Redis URL missing. Using temporary memory storage.");
+        throw new Error(
+            "REDIS_URL is missing from the server environment."
+        );
+    }
+
+    if (client?.isReady) {
         return;
     }
 
-    client = createClient({
-        url: process.env.REDIS_URL
-    });
+    if (connectionAttempt) {
+        await connectionAttempt;
+        return;
+    }
 
-    client.on("error", (error) => {
-        console.error("Redis error:", error.message);
-    });
+    if (!client) {
+        client = createClient({
+            url: process.env.REDIS_URL
+        });
 
-    await client.connect();
-    console.log("Redis connected successfully");
+        client.on("error", error => {
+            console.error("Redis error:", error.message);
+        });
+    }
+
+    connectionAttempt = client.isOpen
+        ? waitForReady(client)
+        : client.connect();
+
+    try {
+        await connectionAttempt;
+        console.log("Connected to Redis successfully.");
+    } finally {
+        connectionAttempt = null;
+    }
+}
+
+async function getClient() {
+    if (!client?.isReady) {
+        await connectDatabase();
+    }
+
+    return client;
 }
 
 async function get(key) {
-    if (!client) return memoryStore.get(key) ?? null;
+    const redis = await getClient();
+    const value = await redis.get(key);
 
-    const value = await client.get(key);
-    return value ? JSON.parse(value) : null;
+    return value === null ? null : JSON.parse(value);
 }
 
 async function set(key, value) {
-    if (!client) {
-        memoryStore.set(key, value);
-        return;
-    }
+    const redis = await getClient();
 
-    await client.set(key, JSON.stringify(value));
+    await redis.set(key, JSON.stringify(value));
+
+    return value;
 }
 
 async function remove(key) {
-    if (!client) {
-        memoryStore.delete(key);
-        return;
-    }
+    const redis = await getClient();
 
-    await client.del(key);
+    return redis.del(key);
 }
 
 async function getAll(prefix) {
-    if (!client) {
-        return [...memoryStore.entries()]
-            .filter(([key]) => key.startsWith(prefix))
-            .map(([, value]) => value);
+    const redis = await getClient();
+    const keys = await redis.keys(`${prefix}*`);
+
+    if (keys.length === 0) {
+        return [];
     }
 
-    const keys = await client.keys(`${prefix}*`);
-    if (!keys.length) return [];
+    const values = await redis.mGet(keys);
 
-    const values = await client.mGet(keys);
     return values
-        .filter(Boolean)
+        .filter(value => value !== null)
         .map(value => JSON.parse(value));
 }
 
-module.exports = { connectDatabase, get, set, remove, getAll };
+async function ping() {
+    const redis = await getClient();
+
+    return redis.ping();
+}
+
+module.exports = {
+    connectDatabase,
+    get,
+    set,
+    remove,
+    getAll,
+    ping
+};
