@@ -1,9 +1,11 @@
 
 import { useEffect, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
+import OrderTracking from "./components/OrderTracking";
 import StaffDashboard from "./components/StaffDashboard";
 import {
     getMenu,
@@ -23,6 +25,10 @@ function App() {
 
     const [customerName, setCustomerName] = useState("");
     const [loading, setLoading] = useState(true);
+    const [orderSubmitting, setOrderSubmitting] = useState(false);
+    const [orderConfirmation, setOrderConfirmation] = useState("");
+    const [copiedTrackingCode, setCopiedTrackingCode] = useState(false);
+    const [copyError, setCopyError] = useState("");
 
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -105,6 +111,8 @@ function App() {
         event.preventDefault();
         setError("");
         setSuccess("");
+        setOrderConfirmation("");
+        setOrderSubmitting(true);
 
         try {
             const result = await placeOrder({
@@ -115,9 +123,10 @@ function App() {
                 }))
             });
 
-            setSuccess(
-                `Order placed successfully! Order ID: ${result.order.id}`
-            );
+            setSuccess("Order placed successfully!");
+            setOrderConfirmation(result.trackingCode);
+            setCopiedTrackingCode(false);
+            setCopyError("");
 
             setCart([]);
             setCheckoutOpen(false);
@@ -125,6 +134,24 @@ function App() {
             setCustomerName("");
         } catch (err) {
             setError(err.message);
+        } finally {
+            setOrderSubmitting(false);
+        }
+    }
+
+    async function copyTrackingCode() {
+        setCopyError("");
+
+        try {
+            if (!navigator.clipboard?.writeText) {
+                throw new Error("Copy is not available in this browser.");
+            }
+
+            await navigator.clipboard.writeText(orderConfirmation);
+            setCopiedTrackingCode(true);
+        } catch (err) {
+            setCopiedTrackingCode(false);
+            setCopyError(err.message);
         }
     }
 
@@ -290,6 +317,49 @@ function App() {
                             </p>
                         )}
 
+                        {orderConfirmation && (
+                            <section
+                                className="order-confirmation"
+                                aria-live="polite"
+                            >
+                                <div>
+                                    <span className="eyebrow">
+                                        KEEP THIS CODE
+                                    </span>
+                                    <h2>Your order is on its way.</h2>
+                                    <p>
+                                        Use this tracking code to check
+                                        your order status. Save it before
+                                        leaving this page.
+                                    </p>
+                                </div>
+                                <div className="tracking-code-row">
+                                    <code>{orderConfirmation}</code>
+                                    <button
+                                        type="button"
+                                        className="copy-tracking-button"
+                                        onClick={copyTrackingCode}
+                                    >
+                                        {copiedTrackingCode
+                                            ? <Check size={17} />
+                                            : <Copy size={17} />}
+                                        {copiedTrackingCode
+                                            ? "Copied"
+                                            : "Copy code"}
+                                    </button>
+                                </div>
+                                {copyError && (
+                                    <p
+                                        className="error-message"
+                                        role="alert"
+                                    >
+                                        {copyError} You can select and copy
+                                        the code above.
+                                    </p>
+                                )}
+                            </section>
+                        )}
+
                         {loading ? (
                             <p className="empty-message">
                                 Loading menu...
@@ -302,6 +372,8 @@ function App() {
                                 onAdd={addToCart}
                             />
                         )}
+
+                        <OrderTracking />
 
                         <section
                             className="about-section"
@@ -366,8 +438,11 @@ function App() {
                         <button
                             className="checkout-button"
                             type="submit"
+                            disabled={orderSubmitting}
                         >
-                            Place Order
+                            {orderSubmitting
+                                ? "Placing Order..."
+                                : "Place Order"}
                         </button>
 
                         <button

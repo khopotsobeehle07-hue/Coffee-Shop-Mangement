@@ -425,6 +425,246 @@ footer {
     color: var(--muted);
 }
 
+/* ORDER TRACKING */
+
+.order-confirmation {
+    margin: 20px 7%;
+    padding: 25px 28px;
+    background: white;
+    border-left: 4px solid var(--gold);
+    border-radius: 8px;
+    box-shadow: 0 5px 20px #00000008;
+}
+
+.order-confirmation h2,
+.tracking-heading h2 {
+    color: var(--brown);
+    font-family: 'Playfair Display', serif;
+    margin: 8px 0;
+}
+
+.order-confirmation p,
+.tracking-heading p {
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.tracking-code-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.tracking-code-row code {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--brown);
+    font-size: 15px;
+    letter-spacing: 0.04em;
+}
+
+.copy-tracking-button {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px solid #ddd2c7;
+    border-radius: 5px;
+    background: var(--cream);
+    color: var(--brown);
+}
+
+.copy-tracking-button:hover {
+    border-color: var(--gold);
+}
+
+.tracking-section {
+    padding: 70px 7%;
+    background: #f3eee7;
+    scroll-margin-top: 20px;
+}
+
+.tracking-card {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 38px;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 8px 30px #00000008;
+}
+
+.tracking-heading {
+    text-align: center;
+}
+
+.tracking-heading p {
+    max-width: 520px;
+    margin: 0 auto;
+}
+
+.tracking-form {
+    margin: 28px 0 0;
+}
+
+.tracking-form label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--brown);
+    font-weight: 600;
+}
+
+.tracking-input-row {
+    display: flex;
+    gap: 10px;
+}
+
+.tracking-input-row input {
+    min-width: 0;
+    flex: 1;
+    padding: 13px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.tracking-input-row input:focus {
+    outline: 2px solid #c18b5060;
+    border-color: var(--gold);
+}
+
+.tracking-input-row .checkout-button {
+    width: auto;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.tracking-input-row .checkout-button:disabled,
+.tracking-result .staff-refresh:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.tracking-error {
+    margin-bottom: 0;
+}
+
+.tracking-result {
+    margin-top: 32px;
+    padding-top: 25px;
+    border-top: 1px solid #eee8e0;
+}
+
+.tracking-result-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.tracking-result-heading h3 {
+    margin-top: 6px;
+    color: var(--brown);
+    font-size: 23px;
+}
+
+.order-progress {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 32px 0;
+    list-style: none;
+}
+
+.order-progress li {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+}
+
+.progress-marker {
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 2px solid #ddd2c7;
+    border-radius: 50%;
+    background: white;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.order-progress li:not(:last-child)::after {
+    position: absolute;
+    top: 16px;
+    left: calc(50% + 17px);
+    width: calc(100% - 34px);
+    height: 2px;
+    background: #ddd2c7;
+    content: "";
+}
+
+.order-progress li.complete {
+    color: var(--brown);
+    font-weight: 600;
+}
+
+.order-progress li.complete .progress-marker {
+    border-color: var(--gold);
+    background: var(--gold);
+    color: white;
+}
+
+.order-progress li.complete:not(:last-child)::after {
+    background: var(--gold);
+}
+
+.order-progress li.current .progress-marker {
+    box-shadow: 0 0 0 4px #c18b5026;
+}
+
+.tracking-order-details {
+    padding: 20px;
+    border-radius: 7px;
+    background: var(--cream);
+}
+
+.tracking-order-details h4 {
+    margin-bottom: 12px;
+    color: var(--brown);
+}
+
+.tracking-order-details ul {
+    list-style: none;
+}
+
+.tracking-order-details li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid #eee8e0;
+}
+
+.tracking-order-details li span:last-child {
+    flex-shrink: 0;
+    color: var(--muted);
+}
+
+.tracking-updated,
+.tracking-order-details > p {
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
 /* STAFF LOGIN */
 
 .staff-login-page {
@@ -776,6 +1016,14 @@ footer {
         align-items: flex-start;
         flex-direction: column;
     }
+
+    .tracking-section {
+        padding: 50px 5%;
+    }
+
+    .tracking-card {
+        padding: 28px 22px;
+    }
 }
 
 @media (max-width: 520px) {
@@ -793,5 +1041,40 @@ footer {
 
     .staff-login-form {
         padding: 28px 22px;
+    }
+
+    .order-confirmation {
+        margin: 18px 5%;
+        padding: 22px 18px;
+    }
+
+    .tracking-code-row,
+    .tracking-input-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .copy-tracking-button,
+    .tracking-input-row .checkout-button {
+        width: 100%;
+    }
+
+    .order-progress {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        margin-left: 4px;
+    }
+
+    .order-progress li {
+        flex-direction: row;
+        gap: 12px;
+        text-align: left;
+    }
+
+    .order-progress li:not(:last-child)::after {
+        top: 34px;
+        left: 16px;
+        width: 2px;
+        height: 14px;
     }
 }

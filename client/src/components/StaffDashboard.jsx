@@ -46,7 +46,27 @@ export default function StaffDashboard({ products, refreshMenu }) {
     }
 
     useEffect(() => {
-        loadOrders();
+        let cancelled = false;
+
+        async function fetchInitialOrders() {
+            try {
+                const data = await staffAPI.getOrders();
+
+                if (!cancelled) {
+                    setOrders(data);
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    setError(err.message);
+                }
+            }
+        }
+
+        fetchInitialOrders();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     function updateField(event) {

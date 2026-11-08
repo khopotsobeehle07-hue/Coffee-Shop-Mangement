@@ -12,6 +12,7 @@ export default function Navbar({ cartCount, onCartClick }) {
             <div className="nav-links">
                 <a href="#home">Home</a>
                 <a href="#menu">Our Menu</a>
+                <a href="#track-order">Track Order</a>
                 <a href="#about">About</a>
             </div>
 

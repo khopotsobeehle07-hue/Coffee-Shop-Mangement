@@ -3,9 +3,14 @@ const express = require("express");
 const { randomUUID } = require("crypto");
 const staffAuth = require("../middleware/auth");
 const database = require("../Config/database");
+const {
+    createTrackingToken,
+    publicOrderView
+} = require("../../utils/orderTracking");
 
 const router = express.Router();
 
+const trackingCodePattern = /^[A-Za-z0-9_-]{43}$/;
 const validStatuses = [
     "Pending",
     "Preparing",
@@ -27,6 +32,47 @@ router.get("/", staffAuth, async (req, res) => {
         res.status(500).json({
             message: "Unable to retrieve orders",
             error: error.message
+        });
+    }
+});
+
+// Public: retrieve safe order status using its customer tracking code
+router.post("/track", async (req, res) => {
+    const { trackingCode } = req.body || {};
+
+    if (typeof trackingCode !== "string" ||
+        !trackingCodePattern.test(trackingCode)) {
+        return res.status(400).json({
+            message: "Enter a valid tracking code."
+        });
+    }
+
+    try {
+        const orderId = await database.get(
+            `order-tracking:${trackingCode}`
+        );
+
+        if (!orderId) {
+            return res.status(404).json({
+                message: "No order was found for that tracking code."
+            });
+        }
+
+        const order = await database.get(`orders:${orderId}`);
+
+        if (!order) {
+            return res.status(404).json({
+                message: "No order was found for that tracking code."
+            });
+        }
+
+        res.json({
+            order: publicOrderView(order)
+        });
+    } catch (error) {
+        console.error("Order tracking failed:", error.message);
+        res.status(500).json({
+            message: "Unable to retrieve order status. Please try again."
         });
     }
 });
@@ -95,6 +141,7 @@ router.post("/", async (req, res) => {
         }
 
         const id = randomUUID();
+        const trackingCode = createTrackingToken();
 
         const order = {
             id,
@@ -105,11 +152,15 @@ router.post("/", async (req, res) => {
             createdAt: new Date().toISOString()
         };
 
-        await database.set(`orders:${id}`, order);
+        await database.setMany([
+            { key: `orders:${id}`, value: order },
+            { key: `order-tracking:${trackingCode}`, value: id }
+        ]);
 
         res.status(201).json({
             message: "Order placed successfully",
-            order
+            order,
+            trackingCode
         });
     } catch (error) {
         res.status(500).json({

@@ -86,6 +86,19 @@ async function set(key, value) {
     return value;
 }
 
+async function setMany(entries) {
+    const redis = await getClient();
+    const transaction = redis.multi();
+
+    for (const { key, value } of entries) {
+        transaction.set(key, JSON.stringify(value));
+    }
+
+    await transaction.exec();
+
+    return entries.map(({ value }) => value);
+}
+
 async function remove(key) {
     const redis = await getClient();
 
@@ -117,6 +130,7 @@ module.exports = {
     connectDatabase,
     get,
     set,
+    setMany,
     remove,
     getAll,
     ping
