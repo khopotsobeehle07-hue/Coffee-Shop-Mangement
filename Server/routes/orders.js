@@ -18,6 +18,100 @@ const validStatuses = [
     "Collected"
 ];
 
+// Staff: calculate sales analytics from existing order records
+router.get("/analytics", staffAuth, async (req, res) => {
+    try {
+        const orders = await database.getAll("orders:");
+        const collectedOrders = orders.filter(
+            order => order.status === "Collected"
+        );
+        const statusCounts = Object.fromEntries(
+            validStatuses.map(status => [status, 0])
+        );
+        const productSales = new Map();
+        const dailyRevenue = new Map();
+        const today = new Date();
+        const todayUtc = Date.UTC(
+            today.getUTCFullYear(),
+            today.getUTCMonth(),
+            today.getUTCDate()
+        );
+
+        for (const order of orders) {
+            if (validStatuses.includes(order.status)) {
+                statusCounts[order.status] += 1;
+            }
+        }
+
+        let totalRevenue = 0;
+
+        for (const order of collectedOrders) {
+            const total = Number(order.total);
+
+            if (Number.isFinite(total)) {
+                totalRevenue += total;
+            }
+
+            for (const item of Array.isArray(order.items) ? order.items : []) {
+                const quantity = Number(item.quantity);
+
+                if (!item.name || !Number.isInteger(quantity) || quantity <= 0) {
+                    continue;
+                }
+
+                const key = item.productId || item.name;
+                const current = productSales.get(key) || {
+                    name: item.name,
+                    quantity: 0
+                };
+                current.quantity += quantity;
+                productSales.set(key, current);
+            }
+
+            const timestamp = order.updatedAt || order.createdAt;
+            const date = typeof timestamp === "string"
+                ? timestamp.slice(0, 10)
+                : "";
+            const parsedDate = new Date(`${date}T00:00:00.000Z`);
+
+            if (!Number.isNaN(parsedDate.getTime())) {
+                const dayRevenue = Number.isFinite(total) ? total : 0;
+                dailyRevenue.set(
+                    date,
+                    (dailyRevenue.get(date) || 0) + dayRevenue
+                );
+            }
+        }
+
+        const dailyRevenueSeries = Array.from({ length: 7 }, (_, index) => {
+            const day = new Date(todayUtc - (6 - index) * 86400000);
+            const date = day.toISOString().slice(0, 10);
+
+            return {
+                date,
+                revenue: Number((dailyRevenue.get(date) || 0).toFixed(2))
+            };
+        });
+
+        const topProducts = [...productSales.values()]
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, 5);
+
+        res.json({
+            totalRevenue: Number(totalRevenue.toFixed(2)),
+            totalOrders: orders.length,
+            statusCounts,
+            topProducts,
+            dailyRevenue: dailyRevenueSeries
+        });
+    } catch (error) {
+        console.error("Sales analytics failed:", error.message);
+        res.status(500).json({
+            message: "Unable to retrieve sales analytics."
+        });
+    }
+});
+
 // Staff: get all orders
 router.get("/", staffAuth, async (req, res) => {
     try {

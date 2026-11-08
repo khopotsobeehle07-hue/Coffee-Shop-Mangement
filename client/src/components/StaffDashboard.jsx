@@ -7,7 +7,10 @@ import {
     RefreshCw,
     X,
     Package,
-    ShoppingBag
+    ShoppingBag,
+    BarChart3,
+    CircleDollarSign,
+    ClipboardList
 } from "lucide-react";
 import { staffAPI } from "../services/api";
 
@@ -27,13 +30,28 @@ const orderStatuses = [
     "Collected"
 ];
 
+const currencyFormatter = new Intl.NumberFormat("en-LS", {
+    minimumFractionDigits: 2
+});
+
+function formatMaloti(amount) {
+    return `M${currencyFormatter.format(amount)}`;
+}
+
 export default function StaffDashboard({ products, refreshMenu }) {
     const [form, setForm] = useState(emptyProduct);
     const [editingId, setEditingId] = useState(null);
     const [orders, setOrders] = useState([]);
+    const [analytics, setAnalytics] = useState(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(true);
+    const [analyticsError, setAnalyticsError] = useState("");
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
     const [saving, setSaving] = useState(false);
+    const maxDailyRevenue = Math.max(
+        0,
+        ...(analytics?.dailyRevenue?.map(day => day.revenue) || [])
+    );
 
     async function loadOrders() {
         try {
@@ -42,6 +60,20 @@ export default function StaffDashboard({ products, refreshMenu }) {
             setOrders(data);
         } catch (err) {
             setError(err.message);
+        }
+    }
+
+    async function loadAnalytics() {
+        setAnalyticsError("");
+        setAnalyticsLoading(true);
+
+        try {
+            const data = await staffAPI.getSalesAnalytics();
+            setAnalytics(data);
+        } catch (err) {
+            setAnalyticsError(err.message);
+        } finally {
+            setAnalyticsLoading(false);
         }
     }
 
@@ -62,7 +94,26 @@ export default function StaffDashboard({ products, refreshMenu }) {
             }
         }
 
+        async function fetchInitialAnalytics() {
+            try {
+                const data = await staffAPI.getSalesAnalytics();
+
+                if (!cancelled) {
+                    setAnalytics(data);
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    setAnalyticsError(err.message);
+                }
+            } finally {
+                if (!cancelled) {
+                    setAnalyticsLoading(false);
+                }
+            }
+        }
+
         fetchInitialOrders();
+        fetchInitialAnalytics();
 
         return () => {
             cancelled = true;
@@ -177,7 +228,7 @@ export default function StaffDashboard({ products, refreshMenu }) {
 
         try {
             await staffAPI.updateOrder(id, status);
-            await loadOrders();
+            await Promise.all([loadOrders(), loadAnalytics()]);
             setMessage("Order status updated.");
         } catch (err) {
             setError(err.message);
@@ -232,6 +283,170 @@ export default function StaffDashboard({ products, refreshMenu }) {
                     </div>
                 </div>
             </div>
+
+            <section className="staff-section analytics-section">
+                <div className="staff-section-heading">
+                    <div>
+                        <span className="eyebrow">SALES OVERVIEW</span>
+                        <h2>Sales Analytics</h2>
+                    </div>
+                    <button
+                        type="button"
+                        className="staff-refresh"
+                        onClick={loadAnalytics}
+                        disabled={analyticsLoading}
+                    >
+                        <RefreshCw size={16} />
+                        {analyticsLoading ? "Refreshing..." : "Refresh"}
+                    </button>
+                </div>
+
+                {analyticsError && (
+                    <div className="staff-alert staff-alert-error">
+                        {analyticsError}
+                    </div>
+                )}
+
+                {analyticsLoading && !analytics ? (
+                    <p className="analytics-message">
+                        Loading sales analytics...
+                    </p>
+                ) : analytics ? (
+                    <>
+                        <div className="analytics-summary">
+                            <div className="analytics-summary-card">
+                                <CircleDollarSign size={22} />
+                                <div>
+                                    <span>Collected revenue</span>
+                                    <strong>
+                                        {formatMaloti(analytics.totalRevenue)}
+                                    </strong>
+                                </div>
+                            </div>
+                            <div className="analytics-summary-card">
+                                <ClipboardList size={22} />
+                                <div>
+                                    <span>Total orders</span>
+                                    <strong>{analytics.totalOrders}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="analytics-status-grid">
+                            {orderStatuses.map(status => (
+                                <div className="analytics-status-card" key={status}>
+                                    <span>{status}</span>
+                                    <strong>
+                                        {analytics.statusCounts?.[status] ?? 0}
+                                    </strong>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="analytics-content-grid">
+                            <div className="analytics-panel">
+                                <div className="analytics-panel-heading">
+                                    <BarChart3 size={19} />
+                                    <h3>Daily Collected Revenue</h3>
+                                </div>
+                                {analytics.dailyRevenue?.some(
+                                    day => day.revenue > 0
+                                ) ? (
+                                    <div
+                                        className="revenue-chart"
+                                        role="img"
+                                        aria-label="Daily collected revenue for the last seven days"
+                                    >
+                                        {analytics.dailyRevenue.map(day => {
+                                            const height = maxDailyRevenue > 0
+                                                ? Math.max(
+                                                    day.revenue / maxDailyRevenue * 100,
+                                                    day.revenue > 0 ? 5 : 0
+                                                )
+                                                : 0;
+                                            const date = new Date(
+                                                `${day.date}T00:00:00.000Z`
+                                            );
+
+                                            return (
+                                                <div
+                                                    className="revenue-chart-day"
+                                                    key={day.date}
+                                                    title={`${day.date}: ${formatMaloti(day.revenue)}`}
+                                                >
+                                                    <span className="revenue-chart-value">
+                                                        {day.revenue > 0
+                                                            ? formatMaloti(day.revenue)
+                                                            : ""}
+                                                    </span>
+                                                    <div className="revenue-chart-track">
+                                                        <div
+                                                            className="revenue-chart-bar"
+                                                            style={{
+                                                                height: `${height}%`
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <span className="revenue-chart-label">
+                                                        {Number.isNaN(date.getTime())
+                                                            ? day.date
+                                                            : new Intl.DateTimeFormat(
+                                                                "en",
+                                                                {
+                                                                    month: "short",
+                                                                    day: "numeric",
+                                                                    timeZone: "UTC"
+                                                                }
+                                                            ).format(date)}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="analytics-message">
+                                        No collected revenue in the last seven days.
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="analytics-panel">
+                                <div className="analytics-panel-heading">
+                                    <ShoppingBag size={19} />
+                                    <h3>Top 5 Best-Selling</h3>
+                                </div>
+                                {analytics.topProducts?.length ? (
+                                    <ol className="top-products-list">
+                                        {analytics.topProducts.map((product, index) => (
+                                            <li
+                                                key={`${product.name}-${index}`}
+                                            >
+                                                <span className="top-product-rank">
+                                                    {index + 1}
+                                                </span>
+                                                <span className="top-product-name">
+                                                    {product.name}
+                                                </span>
+                                                <strong>
+                                                    {product.quantity} sold
+                                                </strong>
+                                            </li>
+                                        ))}
+                                    </ol>
+                                ) : (
+                                    <p className="analytics-message">
+                                        No collected product sales yet.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                ) : !analyticsError ? (
+                    <p className="analytics-message">
+                        No sales analytics available yet.
+                    </p>
+                ) : null}
+            </section>
 
             <section className="staff-section">
                 <div className="staff-section-heading">

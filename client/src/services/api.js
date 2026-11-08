@@ -94,6 +94,10 @@ export const staffAPI = {
         return staffRequest("/orders");
     },
 
+    getSalesAnalytics() {
+        return staffRequest("/orders/analytics");
+    },
+
     addProduct(product) {
         return staffRequest("/menu", {
             method: "POST",
