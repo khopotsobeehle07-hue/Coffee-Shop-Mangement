@@ -1,5 +1,4 @@
 BREWHAUS Coffee Shop Management System
-Module: BIWA2110 – Web Application Development
 Project: Coffee Shop Management Web Application
 Overview
 BREWHAUS is a full-stack coffee shop management application. Customers can browse the menu, manage a cart, place orders and track their status. Staff can manage menu items, process orders and review sales information.
