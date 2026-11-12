@@ -1,8 +1,40 @@
 
 const { createClient } = require("redis");
+const logServerError = require("../utils/logServerError");
 
 let client;
 let connectionAttempt;
+
+const transitionOrderStatusScript = `
+local value = redis.call("GET", KEYS[1])
+if not value then
+    return {0, ""}
+end
+
+local order = cjson.decode(value)
+local allowedStatuses = cjson.decode(ARGV[1])
+local allowed = false
+for _, status in ipairs(allowedStatuses) do
+    if order.status == status then
+        allowed = true
+        break
+    end
+end
+
+if not allowed then
+    return {1, value}
+end
+
+order.status = ARGV[2]
+order.updatedAt = ARGV[3]
+if ARGV[4] == "true" then
+    order.collectedAt = ARGV[3]
+end
+
+local updated = cjson.encode(order)
+redis.call("SET", KEYS[1], updated)
+return {2, updated}
+`;
 
 function waitForReady(redis) {
     return new Promise((resolve, reject) => {
@@ -47,7 +79,7 @@ async function connectDatabase() {
         });
 
         client.on("error", error => {
-            console.error("Redis error:", error.message);
+            logServerError("Redis connection", error);
         });
     }
 
@@ -99,6 +131,30 @@ async function setMany(entries) {
     return entries.map(({ value }) => value);
 }
 
+async function transitionOrderStatus(
+    orderId,
+    allowedStatuses,
+    status,
+    timestamp
+) {
+    const redis = await getClient();
+    const [result, value] = await redis.eval(transitionOrderStatusScript, {
+        keys: [`orders:${orderId}`],
+        arguments: [
+            JSON.stringify(allowedStatuses),
+            status,
+            timestamp,
+            status === "Collected" ? "true" : "false"
+        ]
+    });
+
+    return {
+        found: Number(result) !== 0,
+        updated: Number(result) === 2,
+        order: value ? JSON.parse(value) : null
+    };
+}
+
 async function remove(key) {
     const redis = await getClient();
 
@@ -131,6 +187,7 @@ module.exports = {
     get,
     set,
     setMany,
+    transitionOrderStatus,
     remove,
     getAll,
     ping

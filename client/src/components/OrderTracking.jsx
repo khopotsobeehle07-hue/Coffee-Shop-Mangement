@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { trackOrder } from "../services/api";
+import {
+    confirmOrderCollection,
+    trackOrder
+} from "../services/api";
 
 const orderStatuses = [
     "Pending",
@@ -23,9 +26,10 @@ export default function OrderTracking() {
     const [order, setOrder] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [confirming, setConfirming] = useState(false);
 
     async function lookupOrder(event) {
-        event.preventDefault();
+        event?.preventDefault();
         setError("");
         setLoading(true);
 
@@ -37,6 +41,26 @@ export default function OrderTracking() {
             setError(err.message);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function confirmCollection() {
+        if (!window.confirm(
+            "Confirm that you have physically received this order?"
+        )) {
+            return;
+        }
+
+        setError("");
+        setConfirming(true);
+
+        try {
+            const result = await confirmOrderCollection(trackingCode.trim());
+            setOrder(result);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setConfirming(false);
         }
     }
 
@@ -129,6 +153,33 @@ export default function OrderTracking() {
                         </ol>
 
                         <div className="tracking-order-details">
+                            {order.status === "Ready" && (
+                                <div className="collection-confirmation">
+                                    <p>
+                                        Please confirm only after you have
+                                        physically received your order.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className="checkout-button"
+                                        onClick={confirmCollection}
+                                        disabled={confirming}
+                                    >
+                                        {confirming
+                                            ? "Confirming..."
+                                            : "Confirm I've Collected My Order"}
+                                    </button>
+                                </div>
+                            )}
+                            {order.status === "Collected" && (
+                                <p
+                                    className="collection-success"
+                                    role="status"
+                                >
+                                    Collection confirmed. Thank you for
+                                    choosing BREWHAUS!
+                                </p>
+                            )}
                             <h4>Items in your order</h4>
                             {Array.isArray(order.items) &&
                             order.items.length > 0 ? (

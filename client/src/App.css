@@ -482,6 +482,227 @@ footer {
     border-color: var(--gold);
 }
 
+.order-collection-slip {
+    width: min(680px, 86%);
+    margin: 32px auto;
+    padding: 34px 40px;
+    border: 1px solid #e8dfd4;
+    border-top: 5px solid var(--gold);
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 8px 28px #0000000d;
+    color: var(--brown);
+}
+
+.slip-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 20px;
+    border-bottom: 1px dashed #cbbba9;
+}
+
+.slip-brand-mark {
+    display: grid;
+    width: 42px;
+    aspect-ratio: 1;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--brown);
+    color: white;
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+}
+
+.slip-brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 21px;
+    font-weight: 700;
+}
+
+.slip-brand-caption {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.slip-title-block {
+    padding: 24px 0 20px;
+    text-align: center;
+}
+
+.slip-title-block h2 {
+    margin: 7px 0;
+    font-family: 'Playfair Display', serif;
+    font-size: 23px;
+}
+
+.slip-title-block p,
+.slip-customer-row,
+.slip-status-row {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.slip-customer-row,
+.slip-status-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 0;
+    border-top: 1px solid #eee8e0;
+}
+
+.slip-customer-row strong,
+.slip-status-row strong {
+    color: var(--brown);
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.slip-items-table {
+    width: 100%;
+    margin: 8px 0 0;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.slip-items-table th,
+.slip-items-table td {
+    padding: 11px 6px;
+    border-bottom: 1px solid #eee8e0;
+    text-align: right;
+}
+
+.slip-items-table th:first-child,
+.slip-items-table td:first-child {
+    width: 40%;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.slip-items-table tfoot th,
+.slip-items-table tfoot td {
+    border-bottom: 0;
+    color: var(--brown);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.slip-tracking-block {
+    display: grid;
+    gap: 9px;
+    margin-top: 10px;
+    padding: 16px;
+    border: 1px dashed #cbbba9;
+    background: #faf8f4;
+}
+
+.slip-tracking-block code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-size: 13px;
+    line-height: 1.6;
+    user-select: all;
+}
+
+.slip-tracking-block p,
+.slip-instructions p {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.slip-instructions {
+    display: grid;
+    gap: 10px;
+    padding: 17px 0;
+    text-align: center;
+}
+
+.slip-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    padding-top: 15px;
+    border-top: 1px dashed #cbbba9;
+}
+
+.slip-actions .checkout-button,
+.slip-actions .copy-tracking-button {
+    width: auto;
+    margin: 0;
+}
+
+.slip-actions .checkout-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+@media print {
+    @page {
+        margin: 4mm;
+    }
+
+    html,
+    body {
+        min-width: 0 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+
+    #root > * {
+        display: none !important;
+    }
+
+    #root > .order-collection-slip {
+        position: static !important;
+        display: block !important;
+        width: 72mm !important;
+        max-width: calc(100vw - 8mm) !important;
+        margin: 0 auto !important;
+        padding: 2mm !important;
+        transform: none !important;
+        border: 0 !important;
+        border-top: 1mm solid #87603f !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        color: #201b17 !important;
+        background: white !important;
+        font-size: 9pt !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .slip-actions,
+    .order-collection-slip .error-message {
+        display: none !important;
+    }
+
+    .order-collection-slip,
+    .order-collection-slip * {
+        visibility: visible !important;
+    }
+
+    .slip-header,
+    .slip-title-block,
+    .slip-customer-row,
+    .slip-items-table tr,
+    .slip-tracking-block,
+    .slip-instructions {
+        break-inside: avoid;
+    }
+
+    .slip-tracking-block code {
+        font-size: 8pt !important;
+    }
+}
+
 .tracking-section {
     padding: 70px 7%;
     background: #f3eee7;
@@ -636,6 +857,30 @@ footer {
     background: var(--cream);
 }
 
+.collection-confirmation {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #ddd2c7;
+}
+
+.collection-confirmation p {
+    color: var(--brown);
+    font-weight: 600;
+}
+
+.collection-confirmation .checkout-button {
+    width: fit-content;
+    margin: 0;
+}
+
+.collection-success {
+    margin-bottom: 18px;
+    color: #286344;
+    font-weight: 700;
+}
+
 .tracking-order-details h4 {
     margin-bottom: 12px;
     color: var(--brown);
@@ -693,6 +938,33 @@ footer {
 .staff-login-form p {
     color: var(--muted);
     line-height: 1.6;
+}
+
+.lecturer-demo-credentials {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 1px solid #e8ddce;
+    border-radius: 6px;
+    background: #f8f5f0;
+    color: var(--brown);
+    font-size: 14px;
+}
+
+.lecturer-demo-credentials strong {
+    margin-bottom: 2px;
+}
+
+.lecturer-demo-credentials code {
+    overflow-wrap: anywhere;
+    color: var(--dark);
+}
+
+.lecturer-demo-credentials small {
+    margin-top: 3px;
+    color: var(--muted);
 }
 
 .staff-login-form label {
@@ -932,6 +1204,150 @@ footer {
     border-radius: 5px 5px 0 0;
     background: var(--gold);
     transition: height 180ms ease;
+}
+
+.analytics-new-charts {
+    margin-top: 18px;
+}
+
+.analytics-new-charts .analytics-panel-heading {
+    align-items: flex-start;
+}
+
+.chart-period {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.chart-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin: -4px 0 15px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.chart-total strong {
+    color: var(--brown);
+}
+
+.weekly-revenue-chart {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    align-items: end;
+    gap: 8px;
+    min-height: 220px;
+    padding-top: 10px;
+    border-bottom: 1px solid #ddd2c7;
+}
+
+.weekly-revenue-day {
+    display: flex;
+    min-width: 0;
+    height: 210px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+}
+
+.weekly-revenue-value {
+    max-width: 100%;
+    min-height: 14px;
+    color: var(--brown);
+    font-size: 9px;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.weekly-revenue-track {
+    display: flex;
+    width: min(100%, 38px);
+    height: 130px;
+    align-items: flex-end;
+    overflow: hidden;
+    border-radius: 4px 4px 0 0;
+    background: #f3eee7;
+}
+
+.weekly-revenue-bar {
+    width: 100%;
+    min-height: 0;
+    border-radius: 4px 4px 0 0;
+    background: #638154;
+}
+
+.weekly-revenue-day > strong {
+    color: var(--brown);
+    font-size: 11px;
+}
+
+.weekly-revenue-date {
+    color: var(--muted);
+    font-size: 9px;
+}
+
+.monthly-sales-chart {
+    display: grid;
+    grid-template-columns: minmax(110px, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 18px;
+    min-height: 220px;
+}
+
+.monthly-sales-pie {
+    width: min(100%, 190px);
+    aspect-ratio: 1;
+    justify-self: center;
+    border-radius: 50%;
+    border: 1px solid #ffffff;
+}
+
+.monthly-sales-legend {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+}
+
+.monthly-sales-legend li {
+    display: grid;
+    grid-template-columns: 10px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px 9px;
+    font-size: 11px;
+}
+
+.monthly-sales-swatch {
+    width: 10px;
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: var(--slice-color);
+}
+
+.monthly-sales-product {
+    min-width: 0;
+    color: var(--brown);
+    overflow-wrap: anywhere;
+}
+
+.monthly-sales-legend strong {
+    grid-column: 2 / 4;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.screen-reader-table {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
 .revenue-chart-label {
@@ -1207,6 +1623,11 @@ footer {
         grid-template-columns: 1fr;
     }
 
+    .monthly-sales-chart {
+        grid-template-columns: minmax(100px, 0.7fr) minmax(0, 1.3fr);
+        gap: 12px;
+    }
+
     .analytics-status-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1243,6 +1664,23 @@ footer {
 
     .analytics-panel {
         padding: 16px 12px;
+    }
+
+    .monthly-sales-chart {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    .monthly-sales-pie {
+        width: min(64vw, 190px);
+    }
+
+    .weekly-revenue-chart {
+        gap: 3px;
+    }
+
+    .weekly-revenue-value {
+        font-size: 8px;
     }
 
     .revenue-chart {

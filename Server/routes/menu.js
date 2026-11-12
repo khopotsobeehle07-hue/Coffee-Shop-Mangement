@@ -3,6 +3,7 @@ const express = require("express");
 const { randomUUID } = require("crypto");
 const staffAuth = require("../middleware/auth");
 const database = require("../Config/database");
+const logServerError = require("../utils/logServerError");
 
 const router = express.Router();
 
@@ -12,9 +13,9 @@ router.get("/", async (req, res) => {
         const products = await database.getAll("menu:");
         res.json(products);
     } catch (error) {
+        logServerError("Retrieve menu", error);
         res.status(500).json({
-            message: "Unable to retrieve menu",
-            error: error.message
+            message: "Unable to retrieve menu."
         });
     }
 });
@@ -32,9 +33,9 @@ router.get("/:id", async (req, res) => {
 
         res.json(product);
     } catch (error) {
+        logServerError("Retrieve product", error);
         res.status(500).json({
-            message: "Unable to retrieve product",
-            error: error.message
+            message: "Unable to retrieve product."
         });
     }
 });
@@ -79,9 +80,9 @@ router.post("/", staffAuth, async (req, res) => {
             product
         });
     } catch (error) {
+        logServerError("Add product", error);
         res.status(500).json({
-            message: "Unable to add product",
-            error: error.message
+            message: "Unable to add product."
         });
     }
 });
@@ -132,9 +133,9 @@ router.put("/:id", staffAuth, async (req, res) => {
             product: updatedProduct
         });
     } catch (error) {
+        logServerError("Update product", error);
         res.status(500).json({
-            message: "Unable to update product",
-            error: error.message
+            message: "Unable to update product."
         });
     }
 });
@@ -157,9 +158,9 @@ router.delete("/:id", staffAuth, async (req, res) => {
             message: "Product deleted successfully"
         });
     } catch (error) {
+        logServerError("Delete product", error);
         res.status(500).json({
-            message: "Unable to delete product",
-            error: error.message
+            message: "Unable to delete product."
         });
     }
 });

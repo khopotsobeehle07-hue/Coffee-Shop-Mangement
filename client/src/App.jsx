@@ -1,11 +1,11 @@
 
 import { useEffect, useState } from "react";
-import { Check, Copy } from "lucide-react";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Menu from "./components/Menu";
 import Cart from "./components/Cart";
 import OrderTracking from "./components/OrderTracking";
+import OrderCollectionSlip from "./components/OrderCollectionSlip";
 import StaffDashboard from "./components/StaffDashboard";
 import {
     getMenu,
@@ -14,6 +14,9 @@ import {
     staffAPI
 } from "./services/api";
 import "./App.css";
+
+const lecturerUsername = "admin";
+const lecturerPassword = "CoffeeAdmin2026!";
 
 function App() {
     const [products, setProducts] = useState([]);
@@ -27,6 +30,7 @@ function App() {
     const [loading, setLoading] = useState(true);
     const [orderSubmitting, setOrderSubmitting] = useState(false);
     const [orderConfirmation, setOrderConfirmation] = useState("");
+    const [orderReceipt, setOrderReceipt] = useState(null);
     const [copiedTrackingCode, setCopiedTrackingCode] = useState(false);
     const [copyError, setCopyError] = useState("");
 
@@ -35,8 +39,8 @@ function App() {
 
     const [staffMode, setStaffMode] = useState(false);
     const [staffAuthenticated, setStaffAuthenticated] = useState(false);
-    const [staffUsername, setStaffUsername] = useState("");
-    const [staffPassword, setStaffPassword] = useState("");
+    const [staffUsername, setStaffUsername] = useState(lecturerUsername);
+    const [staffPassword, setStaffPassword] = useState(lecturerPassword);
     const [staffError, setStaffError] = useState("");
     const [staffLoading, setStaffLoading] = useState(false);
 
@@ -112,6 +116,7 @@ function App() {
         setError("");
         setSuccess("");
         setOrderConfirmation("");
+        setOrderReceipt(null);
         setOrderSubmitting(true);
 
         try {
@@ -124,6 +129,7 @@ function App() {
             });
 
             setSuccess("Order placed successfully!");
+            setOrderReceipt(result.order);
             setOrderConfirmation(result.trackingCode);
             setCopiedTrackingCode(false);
             setCopyError("");
@@ -203,6 +209,16 @@ function App() {
                 onCartClick={() => setCartOpen(true)}
             />
 
+            {orderReceipt && orderConfirmation && (
+                <OrderCollectionSlip
+                    order={orderReceipt}
+                    trackingCode={orderConfirmation}
+                    copied={copiedTrackingCode}
+                    copyError={copyError}
+                    onCopy={copyTrackingCode}
+                />
+            )}
+
             <div className="app-toolbar">
                 <button
                     type="button"
@@ -250,6 +266,19 @@ function App() {
                                 Sign in to manage products and
                                 customer orders.
                             </p>
+
+                            <div className="lecturer-demo-credentials">
+                                <strong>Demo login</strong>
+                                <span>
+                                    Username: <code>{lecturerUsername}</code>
+                                </span>
+                                <span>
+                                    Password: <code>{lecturerPassword}</code>
+                                </span>
+                                <small>
+                                    Demo credentials are visible on this page.
+                                </small>
+                            </div>
 
                             <label htmlFor="staffUsername">
                                 Username
@@ -317,49 +346,6 @@ function App() {
                             </p>
                         )}
 
-                        {orderConfirmation && (
-                            <section
-                                className="order-confirmation"
-                                aria-live="polite"
-                            >
-                                <div>
-                                    <span className="eyebrow">
-                                        KEEP THIS CODE
-                                    </span>
-                                    <h2>Your order is on its way.</h2>
-                                    <p>
-                                        Use this tracking code to check
-                                        your order status. Save it before
-                                        leaving this page.
-                                    </p>
-                                </div>
-                                <div className="tracking-code-row">
-                                    <code>{orderConfirmation}</code>
-                                    <button
-                                        type="button"
-                                        className="copy-tracking-button"
-                                        onClick={copyTrackingCode}
-                                    >
-                                        {copiedTrackingCode
-                                            ? <Check size={17} />
-                                            : <Copy size={17} />}
-                                        {copiedTrackingCode
-                                            ? "Copied"
-                                            : "Copy code"}
-                                    </button>
-                                </div>
-                                {copyError && (
-                                    <p
-                                        className="error-message"
-                                        role="alert"
-                                    >
-                                        {copyError} You can select and copy
-                                        the code above.
-                                    </p>
-                                )}
-                            </section>
-                        )}
-
                         {loading ? (
                             <p className="empty-message">
                                 Loading menu...
@@ -372,7 +358,6 @@ function App() {
                                 onAdd={addToCart}
                             />
                         )}
-
                         <OrderTracking />
 
                         <section

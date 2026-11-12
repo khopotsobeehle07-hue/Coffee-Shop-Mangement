@@ -2,16 +2,25 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const logServerError = require("../utils/logServerError");
+const { staffLoginLimiter } = require("../middleware/rateLimits");
 
 const router = express.Router();
 
-router.post("/login", async (req, res) => {
+router.post("/login", staffLoginLimiter, async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const body = req.body;
+        const username = typeof body?.username === "string"
+            ? body.username.trim()
+            : "";
+        const password = typeof body?.password === "string"
+            ? body.password
+            : "";
 
-        if (!username || !password) {
+        if (!username || !password || username.length > 128 ||
+            password.length > 256) {
             return res.status(400).json({
-                message: "Username and password are required."
+                message: "Enter a valid username and password."
             });
         }
 
@@ -59,9 +68,9 @@ router.post("/login", async (req, res) => {
             expiresIn: "2h"
         });
     } catch (error) {
+        logServerError("Staff login", error);
         res.status(500).json({
-            message: "Unable to log in.",
-            error: error.message
+            message: "Unable to log in."
         });
     }
 });

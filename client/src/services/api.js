@@ -48,6 +48,24 @@ export async function trackOrder(trackingCode) {
     return data.order;
 }
 
+export async function confirmOrderCollection(trackingCode) {
+    const response = await fetch(`${API_URL}/orders/confirm-collection`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ trackingCode })
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(data.message || "Unable to confirm order collection.");
+    }
+
+    return data.order;
+}
+
 export async function loginStaff(credentials) {
     const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",

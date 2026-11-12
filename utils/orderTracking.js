@@ -10,6 +10,7 @@ function publicOrderView(order) {
     status: order.status,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt || null,
+    collectedAt: order.collectedAt || null,
     items: Array.isArray(order.items)
       ? order.items.map((item) => ({
           name: item.name,

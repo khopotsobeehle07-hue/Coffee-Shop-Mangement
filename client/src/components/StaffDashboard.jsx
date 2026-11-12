@@ -29,6 +29,7 @@ const orderStatuses = [
     "Ready",
     "Collected"
 ];
+const editableOrderStatuses = ["Pending", "Preparing", "Ready"];
 
 const currencyFormatter = new Intl.NumberFormat("en-LS", {
     minimumFractionDigits: 2
@@ -36,6 +37,84 @@ const currencyFormatter = new Intl.NumberFormat("en-LS", {
 
 function formatMaloti(amount) {
     return `M${currencyFormatter.format(amount)}`;
+}
+
+const chartColors = [
+    "#638154",
+    "#bd8a4b",
+    "#4e7b87",
+    "#b85c4a",
+    "#806c91",
+    "#9b9b52"
+];
+
+function getMonthlyProductSlices(analytics) {
+    const monthlyRevenue = Number(analytics?.monthlyRevenue) || 0;
+    const products = Array.isArray(analytics?.monthlyProducts)
+        ? analytics.monthlyProducts
+        : [];
+    const productRevenue = products.reduce(
+        (sum, product) => sum + Number(product.revenue || 0),
+        0
+    );
+    const chartTotal = Math.max(monthlyRevenue, productRevenue);
+
+    if (chartTotal <= 0) return [];
+
+    const entries = products.map(product => ({
+        name: product.name,
+        revenue: Number(product.revenue) || 0
+    }));
+    const unallocatedRevenue = Math.max(0, monthlyRevenue - productRevenue);
+
+    if (unallocatedRevenue >= 0.01) {
+        entries.push({ name: "Other", revenue: unallocatedRevenue });
+    }
+
+    entries.sort((a, b) => b.revenue - a.revenue);
+
+    const slices = [];
+    let otherRevenue = 0;
+
+    for (const product of entries) {
+        const share = product.revenue / chartTotal;
+
+        if (product.name !== "Other" && share >= 0.04 && slices.length < 5) {
+            slices.push(product);
+        } else {
+            otherRevenue += product.revenue;
+        }
+    }
+
+    if (otherRevenue >= 0.01) {
+        slices.push({ name: "Other", revenue: otherRevenue });
+    }
+
+    let currentStop = 0;
+    return slices.map((slice, index) => {
+        const start = currentStop;
+        currentStop = index === slices.length - 1
+            ? 100
+            : currentStop + slice.revenue / chartTotal * 100;
+
+        return {
+            ...slice,
+            percentage: slice.revenue / chartTotal * 100,
+            color: chartColors[index % chartColors.length],
+            start,
+            end: currentStop
+        };
+    });
+}
+
+function formatBusinessMonth(value) {
+    if (!/^\d{4}-\d{2}$/.test(value || "")) return "Current month";
+
+    return new Intl.DateTimeFormat("en", {
+        month: "long",
+        year: "numeric",
+        timeZone: "Africa/Maseru"
+    }).format(new Date(`${value}-15T12:00:00.000Z`));
 }
 
 export default function StaffDashboard({ products, refreshMenu }) {
@@ -52,6 +131,17 @@ export default function StaffDashboard({ products, refreshMenu }) {
         0,
         ...(analytics?.dailyRevenue?.map(day => day.revenue) || [])
     );
+    const weeklyRevenue = analytics?.weeklyRevenue || [];
+    const maxWeeklyRevenue = Math.max(
+        0,
+        ...weeklyRevenue.map(day => day.revenue)
+    );
+    const monthlyProductSlices = getMonthlyProductSlices(analytics);
+    const pieBackground = monthlyProductSlices.length
+        ? `conic-gradient(${monthlyProductSlices.map(slice =>
+            `${slice.color} ${slice.start}% ${slice.end}%`
+        ).join(", ")})`
+        : "#eee8e0";
 
     async function loadOrders() {
         try {
@@ -115,8 +205,31 @@ export default function StaffDashboard({ products, refreshMenu }) {
         fetchInitialOrders();
         fetchInitialAnalytics();
 
+        let polling = false;
+        const pollTimer = window.setInterval(async () => {
+            if (polling || cancelled) return;
+            polling = true;
+
+            try {
+                const data = await staffAPI.getOrders();
+                if (!cancelled) setOrders(data);
+            } catch (err) {
+                if (!cancelled) setError(err.message);
+            }
+
+            try {
+                const data = await staffAPI.getSalesAnalytics();
+                if (!cancelled) setAnalytics(data);
+            } catch (err) {
+                if (!cancelled) setAnalyticsError(err.message);
+            } finally {
+                polling = false;
+            }
+        }, 15000);
+
         return () => {
             cancelled = true;
+            window.clearInterval(pollTimer);
         };
     }, []);
 
@@ -440,6 +553,152 @@ export default function StaffDashboard({ products, refreshMenu }) {
                                 )}
                             </div>
                         </div>
+
+                        <div className="analytics-content-grid analytics-new-charts">
+                            <section className="analytics-panel">
+                                <div className="analytics-panel-heading">
+                                    <BarChart3 size={19} />
+                                    <div>
+                                        <h3>Weekly Sales Revenue</h3>
+                                        <p className="chart-period">
+                                            Monday through Sunday · Africa/Maseru
+                                        </p>
+                                    </div>
+                                </div>
+                                <p className="chart-total">
+                                    Weekly total
+                                    <strong>
+                                        {formatMaloti(analytics.weeklyTotalRevenue || 0)}
+                                    </strong>
+                                </p>
+                                {weeklyRevenue.length === 7 ? (
+                                    <>
+                                        <div
+                                            className="weekly-revenue-chart"
+                                            role="img"
+                                            aria-label={`Weekly sales revenue from Monday through Sunday. Total ${formatMaloti(analytics.weeklyTotalRevenue || 0)}.`}
+                                        >
+                                            {weeklyRevenue.map(day => {
+                                                const height = maxWeeklyRevenue > 0
+                                                    ? Math.max(
+                                                        day.revenue / maxWeeklyRevenue * 100,
+                                                        day.revenue > 0 ? 4 : 0
+                                                    )
+                                                    : 0;
+
+                                                return (
+                                                    <div
+                                                        className="weekly-revenue-day"
+                                                        key={day.date}
+                                                    >
+                                                        <span className="weekly-revenue-value">
+                                                            {formatMaloti(day.revenue)}
+                                                        </span>
+                                                        <div className="weekly-revenue-track">
+                                                            <div
+                                                                className="weekly-revenue-bar"
+                                                                style={{ height: `${height}%` }}
+                                                            />
+                                                        </div>
+                                                        <strong>{day.weekday.slice(0, 3)}</strong>
+                                                        <span className="weekly-revenue-date">
+                                                            {day.date.slice(5)}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {analytics.weeklyTotalRevenue === 0 && (
+                                            <p className="analytics-message">
+                                                No collected sales this week. Each day is shown as M0.
+                                            </p>
+                                        )}
+                                        <table className="screen-reader-table">
+                                            <caption>Weekly Sales Revenue by Maseru business day</caption>
+                                            <thead>
+                                                <tr><th>Day</th><th>Date</th><th>Revenue</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                {weeklyRevenue.map(day => (
+                                                    <tr key={day.date}>
+                                                        <th scope="row">{day.weekday}</th>
+                                                        <td>{day.date}</td>
+                                                        <td>{formatMaloti(day.revenue)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </>
+                                ) : (
+                                    <p className="analytics-message">
+                                        Weekly revenue data is unavailable.
+                                    </p>
+                                )}
+                            </section>
+
+                            <section className="analytics-panel">
+                                <div className="analytics-panel-heading">
+                                    <ShoppingBag size={19} />
+                                    <div>
+                                        <h3>Monthly Sales by Product</h3>
+                                        <p className="chart-period">
+                                            {formatBusinessMonth(analytics.businessMonth)} · Africa/Maseru
+                                        </p>
+                                    </div>
+                                </div>
+                                <p className="chart-total">
+                                    Monthly total
+                                    <strong>{formatMaloti(analytics.monthlyRevenue || 0)}</strong>
+                                </p>
+                                {monthlyProductSlices.length ? (
+                                    <>
+                                        <div className="monthly-sales-chart">
+                                            <div
+                                                className="monthly-sales-pie"
+                                                role="img"
+                                                aria-label={`Monthly product sales by contribution: ${monthlyProductSlices.map(slice => `${slice.name}, ${slice.percentage.toFixed(1)} percent, ${formatMaloti(slice.revenue)}`).join("; ")}`}
+                                                style={{ background: pieBackground }}
+                                            />
+                                            <ul className="monthly-sales-legend">
+                                                {monthlyProductSlices.map(slice => (
+                                                    <li key={slice.name}>
+                                                        <span
+                                                            className="monthly-sales-swatch"
+                                                            style={{ "--slice-color": slice.color }}
+                                                            aria-hidden="true"
+                                                        />
+                                                        <span className="monthly-sales-product">
+                                                            {slice.name}
+                                                        </span>
+                                                        <span>{slice.percentage.toFixed(1)}%</span>
+                                                        <strong>{formatMaloti(slice.revenue)}</strong>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                        <table className="screen-reader-table">
+                                            <caption>Monthly Sales by Product for {formatBusinessMonth(analytics.businessMonth)}</caption>
+                                            <thead>
+                                                <tr><th>Product</th><th>Revenue</th><th>Share</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                {monthlyProductSlices.map(slice => (
+                                                    <tr key={slice.name}>
+                                                        <th scope="row">{slice.name}</th>
+                                                        <td>{formatMaloti(slice.revenue)}</td>
+                                                        <td>{slice.percentage.toFixed(1)}%</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </>
+                                ) : (
+                                    <p className="analytics-message">
+                                        No collected product sales this month.
+                                    </p>
+                                )}
+                            </section>
+                        </div>
                     </>
                 ) : !analyticsError ? (
                     <p className="analytics-message">
@@ -650,24 +909,28 @@ export default function StaffDashboard({ products, refreshMenu }) {
                                     </td>
                                     <td>{order.status}</td>
                                     <td>
-                                        <select
-                                            value={order.status}
-                                            onChange={event =>
-                                                changeOrderStatus(
-                                                    order.id,
-                                                    event.target.value
-                                                )
-                                            }
-                                        >
-                                            {orderStatuses.map(status => (
-                                                <option
-                                                    key={status}
-                                                    value={status}
-                                                >
-                                                    {status}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {order.status === "Collected" ? (
+                                            <span>Collected</span>
+                                        ) : (
+                                            <select
+                                                value={order.status}
+                                                onChange={event =>
+                                                    changeOrderStatus(
+                                                        order.id,
+                                                        event.target.value
+                                                    )
+                                                }
+                                            >
+                                                {editableOrderStatuses.map(status => (
+                                                    <option
+                                                        key={status}
+                                                        value={status}
+                                                    >
+                                                        {status}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
